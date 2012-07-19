@@ -22,24 +22,24 @@ then
     exit 1
 fi
 
-# Check if virtualenv is installed.
-if ! command -v virtualenv >/dev/null
-then
-    echo 'Trevor requires virtualenv but it is not installed. Aborting.'
-
-    exit 1
-fi
-
-repository=$1
-branch=$2
+# Variable declarations. Don't change these =)
+virtualenv='https://raw.github.com/pypa/virtualenv/develop/virtualenv.py'
 project='project'
 working_dir=`pwd`
+repository=$1
+branch=$2
 
+# User variable declarations. Set these if you want to use them!
+hipchat_auth_token=''
+
+# Let's get started, shall we?
 echo 'Hi, I am Trevor!'
 echo
 
 # Work it.
-virtualenv testbox
+cd $working_dir
+wget $virtualenv
+python virtualenv.py testbox
 
 source testbox/bin/activate
 
@@ -71,18 +71,32 @@ fi
 dir=`dirname $file`
 cd $dir
 
+# Run Django test suite and send results into HipChat.
 if python manage.py test 2>&1 | grep -q 'OK'
 then
     echo
     echo 'Pass'
     echo
+
+    # If HipChat auth token is set, send the message to the room.
+    if [ ! -z "$hipchat_auth_token" ]
+    then
+        curl -d "room_id=ourCSA&from=Trevor&message=Build+Status:+Passing&color=green" https://api.hipchat.com/v1/rooms/message?auth_token=$hipchat_auth_token&format=json
+    fi
 else
     echo
     echo 'Fail'
     echo
+
+    # If HipChat auth token is set, send the message to the room.
+    if [ ! -z "$hipchat_auth_token" ]
+    then
+        curl -d "room_id=ourCSA&from=Trevor&message=Build+Status:+Failing&color=red&notify=1" https://api.hipchat.com/v1/rooms/message?auth_token=$hipchat_auth_token&format=json
+    fi
 fi
 
 cd $working_dir
 
 # Clean it.
 rm -rf testbox
+rm virtualenv.py*
